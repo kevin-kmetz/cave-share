@@ -4,6 +4,8 @@
 
 import java.net.*;
 import java.util.Scanner;
+import java.io.File;
+
 import java.util.InputMismatchException;
 
 class CaveShare {
@@ -15,11 +17,12 @@ class CaveShare {
 		CaveServer() {
 			System.out.println("\nInitializing server...\n");
 			CaveShare.wait(waitTime);
-			int port = getPort();
-			String token = getToken();
+			int serverPort = chooseServerPort();
+			String token = chooseToken();
+			File file = chooseFile();
 		}
 
-		int getPort() {
+		int chooseServerPort() {
 
 			int port = 55555;
 			Scanner input = new Scanner(System.in);
@@ -52,7 +55,7 @@ class CaveShare {
 			return port;
 		}
 
-		String getToken () {
+		String chooseToken () {
 
 			Scanner input = new Scanner(System.in);
 
@@ -61,6 +64,27 @@ class CaveShare {
 			System.out.print("Enter a word or phrase: ");
 
 			return input.nextLine();
+
+		}
+
+		File chooseFile() {
+
+			Scanner input = new Scanner(System.in);
+			String pathAndName = "";
+			File file;
+
+			System.out.println("\nPlease enter the path and filename of the file that will be offered.");
+			CaveShare.wait(waitTime);
+			System.out.print("Enter the path and filename: ");
+
+			pathAndName = input.nextLine();
+
+			file = new File(pathAndName);
+
+			System.out.println(file.getAbsolutePath());
+			System.out.println(file.exists());
+
+			return file;
 
 		}
 
