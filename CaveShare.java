@@ -9,9 +9,13 @@ class CaveShare {
 
 	static int waitTime = 750;
 
-	static void CaveServer(){
+	class CaveServer {
 
-		// Add code for the server here.
+		CaveServer() {
+			System.out.println("\nThis is a Cave Server!\n");
+			CaveShare.wait(waitTime);
+			System.out.println("This now works!\n");
+		}
 
 	}
 
@@ -50,7 +54,8 @@ class CaveShare {
 						break;
 					case("offer"):
 						inputError = false;
-						System.out.println("Server!");
+						CaveServer server = new CaveShare().new CaveServer();
+						//System.out.println("Server!");
 						break;
 					default:
 						inputError = true;
@@ -68,8 +73,9 @@ class CaveShare {
 		try {
 			Thread.sleep(time);
 		} catch (InterruptedException e) {
-			// Nothing is done here.
-			// If an InterruptedException is caught, just stop sleeping.
+			// Do nothing if an InterruptedException occurs,
+			// as the program can just continue on.
+			// System.out.println("An error!");
 		}
 
 	}
