@@ -4,6 +4,7 @@
 
 import java.net.*;
 import java.util.Scanner;
+import java.util.InputMismatchException;
 
 class CaveShare {
 
@@ -12,16 +13,48 @@ class CaveShare {
 	class CaveServer {
 
 		CaveServer() {
-			System.out.println("\nThis is a Cave Server!\n");
+			System.out.println("\nInitializing server...\n");
 			CaveShare.wait(waitTime);
-			System.out.println("This now works!\n");
+			int port = getPort();
+		}
+
+		int getPort() {
+
+			int port = 55555;
+			Scanner input = new Scanner(System.in);
+			boolean inputError;
+
+			do {
+				inputError = false;
+				System.out.print("Which port should be to send files?\nPort number: ");
+				try {
+					port = input.nextInt();
+
+					if (port <= 0) {
+						inputError = true;
+						System.out.println("Error - invalid port number. Please enter another port number.\n");
+						CaveShare.wait(waitTime);
+					}
+
+				} catch (InputMismatchException e) {
+					inputError = true;
+					System.out.println("Error. Please enter another port number.\n");
+					CaveShare.wait(waitTime);
+
+					// The following line is needed to disregard a lingering '\n'.
+					input.nextLine();
+				}
+			} while (inputError);
+
+			return port;
+
 		}
 
 	}
 
 	static void CaveClient(){
 
-		// Add code for the client here.
+		// Add client code here later.
 
 	}
 
