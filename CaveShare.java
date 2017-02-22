@@ -16,6 +16,7 @@ class CaveShare {
 			System.out.println("\nInitializing server...\n");
 			CaveShare.wait(waitTime);
 			int port = getPort();
+			String token = getToken();
 		}
 
 		int getPort() {
@@ -26,7 +27,9 @@ class CaveShare {
 
 			do {
 				inputError = false;
-				System.out.print("Which port should be to send files?\nPort number: ");
+				System.out.println("Which port should be used to send files?");
+				CaveShare.wait(waitTime);
+				System.out.print("Port number: ");
 				try {
 					port = input.nextInt();
 
@@ -47,6 +50,17 @@ class CaveShare {
 			} while (inputError);
 
 			return port;
+		}
+
+		String getToken () {
+
+			Scanner input = new Scanner(System.in);
+
+			System.out.println("\nPlease enter a token that others can use to initiate file transfers.");
+			CaveShare.wait(waitTime);
+			System.out.print("Enter a word or phrase: ");
+
+			return input.nextLine();
 
 		}
 
