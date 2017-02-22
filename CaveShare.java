@@ -7,6 +7,7 @@ import java.util.Scanner;
 import java.io.File;
 
 import java.util.InputMismatchException;
+import java.io.IOException;
 
 class CaveShare {
 
@@ -17,9 +18,17 @@ class CaveShare {
 		CaveServer() {
 			System.out.println("\nInitializing server...\n");
 			CaveShare.wait(waitTime);
+
 			int serverPort = chooseServerPort();
 			String token = chooseToken();
 			File file = chooseFile();
+
+			try {
+				offerFile(file, serverPort, token);
+			} catch (UnknownHostException e) {
+				System.out.println("Error - the server has an invalid address.");
+				System.out.println("Exiting the program early...\n");
+			}
 		}
 
 		int chooseServerPort() {
@@ -73,19 +82,93 @@ class CaveShare {
 			String pathAndName = "";
 			File file;
 
-			System.out.println("\nPlease enter the path and filename of the file that will be offered.");
-			CaveShare.wait(waitTime);
-			System.out.print("Enter the path and filename: ");
+			do {
+				System.out.println("\nPlease enter the path and filename of the file that will be offered.");
+				CaveShare.wait(waitTime);
+				System.out.print("Enter the path and filename: ");
 
-			pathAndName = input.nextLine();
+				pathAndName = input.nextLine();
 
-			file = new File(pathAndName);
+				file = new File(pathAndName);
 
-			System.out.println(file.getAbsolutePath());
-			System.out.println(file.exists());
+			} while (!isValidFile(file));
 
 			return file;
 
+		}
+
+		boolean isValidFile (File file) {
+
+			if (file.exists() && !file.isDirectory()) {
+				return true;
+			} else if (!file.exists()) {
+				System.out.println("Error - file does not exist. Please enter another file.");
+				return false;
+			} else if (file.isDirectory()) {
+				System.out.println("Error - this is a directory. Please enter a file instead.");
+				return false;
+			}
+
+			// It shouldn't be possible to get to this return statement.
+			return false;
+
+		}
+
+		void offerFile(File file, int serverPort, String token) throws UnknownHostException {
+
+			System.out.println("\nPreparing to offer file...");
+
+			InetAddress serverAddress = InetAddress.getLocalHost();
+
+			System.out.println("\nServer address: " + serverAddress);
+			System.out.println("Listening on port: " + serverPort);
+			System.out.println("File: " + file.getName());
+			System.out.println("Server token: " + token);
+
+			try {
+				listenForClient(serverPort, token);
+			} catch (SocketException e) {
+				System.out.println("Error occurred while trying to open a port.");
+			} catch (IOException e) {
+				System.out.println("Error occurred while receiving data.");
+			}
+
+		}
+
+		void listenForClient(int serverPort, String token) throws SocketException, IOException {
+
+			System.out.println("\nNow listening for a client...\n");
+
+			DatagramSocket serverSocket = new DatagramSocket(serverPort);
+
+			int bufferSize = 256;
+			byte dataBuffer[] = new byte[bufferSize];
+			boolean keepGoing;
+
+			DatagramPacket packet = new DatagramPacket(dataBuffer, dataBuffer.length);
+
+			do {
+
+				serverSocket.receive(packet);
+
+				String receivedToken = new String(packet.getData(), 0, packet.getLength());
+
+
+				if (!receivedToken.equals(token)) {
+					keepGoing = true;
+					System.out.print("Received an unauthorized connection attempt from ");
+					System.out.print(packet.getAddress() + ":" + packet.getPort());
+					System.out.println(" using token '" + receivedToken + "'.");
+				} else {
+					keepGoing = false;
+					System.out.print("Connection initiated from ");
+					System.out.print(packet.getAddress() + ":" + packet.getPort());
+					System.out.println(", token '" + receivedToken + "' successfully received!");
+				}
+
+			} while (keepGoing);
+
+			System.out.println("\nMoving on to the next step...\n");
 		}
 
 	}
