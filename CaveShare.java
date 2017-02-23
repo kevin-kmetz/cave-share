@@ -126,7 +126,8 @@ class CaveShare {
 			System.out.println("Server token: " + token);
 
 			try {
-				listenForClient(serverPort, token);
+				DatagramPacket clientPacket = listenForClient(serverPort, token);
+				sendFileInfo(file, clientPacket);
 			} catch (SocketException e) {
 				System.out.println("Error occurred while trying to open a port.");
 			} catch (IOException e) {
@@ -135,7 +136,7 @@ class CaveShare {
 
 		}
 
-		void listenForClient(int serverPort, String token) throws SocketException, IOException {
+		DatagramPacket listenForClient(int serverPort, String token) throws SocketException, IOException {
 
 			System.out.println("\nNow listening for a client...\n");
 
@@ -169,6 +170,14 @@ class CaveShare {
 			} while (keepGoing);
 
 			System.out.println("\nMoving on to the next step...\n");
+			return packet;
+		}
+
+		void sendFileInfo(File file, DatagramPacket packet) {
+
+			String fileName = file.getName();
+			int fileSize = file.length();
+
 		}
 
 	}
