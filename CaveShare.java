@@ -136,7 +136,7 @@ class CaveShare {
 
 			try {
 				DatagramPacket clientPacket = listenForClient(serverPort, token);
-				sendFileInfo(file, clientPacket);
+				sendFileInfo(file, clientPacket, serverPort);
 			} catch (SocketException e) {
 				System.out.println("Error occurred while trying to open a port.");
 			} catch (IOException e) {
@@ -178,19 +178,29 @@ class CaveShare {
 
 			} while (keepGoing);
 
+			serverSocket.close();
 			System.out.println("\nMoving on to the next step...\n");
+			CaveShare.wait(15000);
 			return packet;
 		}
 
-		void sendFileInfo(File file, DatagramPacket packet) {
+		void sendFileInfo(File file, DatagramPacket clientPacket, int serverPort) throws SocketException, IOException {
 
 			String fileName = file.getName();
 			long fileSize = file.length();
 			String hash = getHash(file);
 
-			byte[] packetBody = formInfoByteArray(fileSize, hash, fileName);
+			System.out.println("Sending file information to the client...");
 
-			DatagramPacket infoPacket;
+			byte[] packetBody = formInfoByteArray(fileSize, hash, fileName);
+			System.out.println("Packet size: " + packetBody.length + " bytes");
+
+			DatagramSocket serverSocket = new DatagramSocket(serverPort);
+			DatagramPacket infoPacket = new DatagramPacket(packetBody, packetBody.length, clientPacket.getAddress(), clientPacket.getPort());
+
+			serverSocket.send(infoPacket);
+
+			System.out.println("File information sent!");
 
 		}
 
@@ -222,7 +232,7 @@ class CaveShare {
 			byte[] newArray = new byte[arrayOne.length + arrayTwo.length];
 
 			System.arraycopy(arrayOne, 0, newArray, 0, arrayOne.length);
-			System.arraycopy(arrayOne, 0, newArray, arrayOne.length, arrayTwo.length);
+			System.arraycopy(arrayTwo, 0, newArray, arrayOne.length, arrayTwo.length);
 
 			return newArray;
 
