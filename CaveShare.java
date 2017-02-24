@@ -5,9 +5,14 @@
 import java.net.*;
 import java.util.Scanner;
 import java.io.File;
+import java.io.FileInputStream;
+import java.security.MessageDigest;
 
 import java.util.InputMismatchException;
 import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.security.NoSuchAlgorithmException;
+
 
 class CaveShare {
 
@@ -176,7 +181,7 @@ class CaveShare {
 		void sendFileInfo(File file, DatagramPacket packet) {
 
 			String fileName = file.getName();
-			int fileSize = file.length();
+			long fileSize = file.length();
 
 		}
 
@@ -240,6 +245,30 @@ class CaveShare {
 			// as the program can just continue on.
 			// System.out.println("An error!");
 		}
+
+	}
+
+	static String getHash(File file) throws FileNotFoundException, IOException, NoSuchAlgorithmException {
+
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+		FileInputStream fileInputStream = new FileInputStream(file);
+		byte[] fileBytes = new byte[fileInputStream.available()];
+
+		fileInputStream.read(fileBytes);
+
+		digest.update(fileBytes);
+		byte[] hashedBytes = digest.digest();
+
+		StringBuilder builder = new StringBuilder();
+
+		for(byte b: hashedBytes) {
+			builder.append(String.format("%02x", b));
+		}
+
+		String hash = builder.toString();
+
+		return hash;
 
 	}
 
