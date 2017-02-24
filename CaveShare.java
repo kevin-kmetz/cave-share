@@ -98,6 +98,8 @@ class CaveShare {
 
 			} while (!isValidFile(file));
 
+			System.out.println("SHA-256 hash: " + getHash(file));
+
 			return file;
 
 		}
@@ -182,6 +184,7 @@ class CaveShare {
 
 			String fileName = file.getName();
 			long fileSize = file.length();
+			//String hash = "";
 
 		}
 
@@ -248,25 +251,31 @@ class CaveShare {
 
 	}
 
-	static String getHash(File file) throws FileNotFoundException, IOException, NoSuchAlgorithmException {
+	static String getHash(File file) {
 
-		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		String hash;
 
-		FileInputStream fileInputStream = new FileInputStream(file);
-		byte[] fileBytes = new byte[fileInputStream.available()];
+		try {
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
-		fileInputStream.read(fileBytes);
+			FileInputStream fileInputStream = new FileInputStream(file);
+			byte[] fileBytes = new byte[fileInputStream.available()];
 
-		digest.update(fileBytes);
-		byte[] hashedBytes = digest.digest();
+			fileInputStream.read(fileBytes);
 
-		StringBuilder builder = new StringBuilder();
+			digest.update(fileBytes);
+			byte[] hashedBytes = digest.digest();
 
-		for(byte b: hashedBytes) {
-			builder.append(String.format("%02x", b));
+			StringBuilder builder = new StringBuilder();
+
+			for(byte b: hashedBytes) {
+				builder.append(String.format("%02x", b));
+			}
+
+			hash = builder.toString();
+		} catch (Exception e) {
+			hash =  "ERROR - NO HASH";
 		}
-
-		String hash = builder.toString();
 
 		return hash;
 
