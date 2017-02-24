@@ -7,6 +7,8 @@ import java.util.Scanner;
 import java.io.File;
 import java.io.FileInputStream;
 import java.security.MessageDigest;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import java.util.InputMismatchException;
 import java.io.IOException;
@@ -184,7 +186,45 @@ class CaveShare {
 
 			String fileName = file.getName();
 			long fileSize = file.length();
-			//String hash = "";
+			String hash = getHash(file);
+
+			byte[] packetBody = formInfoByteArray(fileSize, hash, fileName);
+
+			DatagramPacket infoPacket;
+
+		}
+
+		byte[] formInfoByteArray(long fileSize, String hash, String fileName) {
+
+			byte[] arrayOne = concatenateByteArrays(longToBytes(fileSize), stringToBytes(hash));
+			byte[] arrayTwo = concatenateByteArrays(arrayOne, stringToBytes(fileName));
+
+			return arrayTwo;
+
+		}
+
+		byte[] longToBytes(long number) {
+
+			ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+			buffer.putLong(number);
+			return buffer.array();
+
+		}
+
+		byte[] stringToBytes(String str) {
+
+			return str.getBytes();
+
+		}
+
+		byte[] concatenateByteArrays(byte[] arrayOne, byte[] arrayTwo) {
+
+			byte[] newArray = new byte[arrayOne.length + arrayTwo.length];
+
+			System.arraycopy(arrayOne, 0, newArray, 0, arrayOne.length);
+			System.arraycopy(arrayOne, 0, newArray, arrayOne.length, arrayTwo.length);
+
+			return newArray;
 
 		}
 
