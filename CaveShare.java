@@ -135,8 +135,16 @@ class CaveShare {
 			System.out.println("Server token: " + token);
 
 			try {
-				DatagramPacket clientPacket = listenForClient(serverPort, token);
-				sendFileInfo(file, clientPacket, serverPort);
+				DatagramSocket serverSocket = new DatagramSocket(serverPort);
+
+				DatagramPacket clientPacket = listenForClient(serverSocket, token);
+				sendFileInfo(file, clientPacket, serverSocket);
+				boolean clientReady = waitForClientReadiness(clientPacket, serverSocket);
+
+				if (clientReady) {
+					sendFile(file, clientPacket, serverSocket);
+				}
+
 			} catch (SocketException e) {
 				System.out.println("Error occurred while trying to open a port.");
 			} catch (IOException e) {
@@ -145,11 +153,9 @@ class CaveShare {
 
 		}
 
-		DatagramPacket listenForClient(int serverPort, String token) throws SocketException, IOException {
+		DatagramPacket listenForClient(DatagramSocket serverSocket, String token) throws SocketException, IOException {
 
 			System.out.println("\nNow listening for a client...\n");
-
-			DatagramSocket serverSocket = new DatagramSocket(serverPort);
 
 			int bufferSize = 256;
 			byte dataBuffer[] = new byte[bufferSize];
@@ -162,7 +168,6 @@ class CaveShare {
 				serverSocket.receive(packet);
 
 				String receivedToken = new String(packet.getData(), 0, packet.getLength());
-
 
 				if (!receivedToken.equals(token)) {
 					keepGoing = true;
@@ -178,13 +183,13 @@ class CaveShare {
 
 			} while (keepGoing);
 
-			serverSocket.close();
 			System.out.println("\nMoving on to the next step...\n");
-			CaveShare.wait(15000);
+			// This is a delay for manual testing purposes.
+			//CaveShare.wait(15000);
 			return packet;
 		}
 
-		void sendFileInfo(File file, DatagramPacket clientPacket, int serverPort) throws SocketException, IOException {
+		void sendFileInfo(File file, DatagramPacket clientPacket, DatagramSocket serverSocket) throws SocketException, IOException {
 
 			String fileName = file.getName();
 			long fileSize = file.length();
@@ -195,7 +200,6 @@ class CaveShare {
 			byte[] packetBody = formInfoByteArray(fileSize, hash, fileName);
 			System.out.println("Packet size: " + packetBody.length + " bytes");
 
-			DatagramSocket serverSocket = new DatagramSocket(serverPort);
 			DatagramPacket infoPacket = new DatagramPacket(packetBody, packetBody.length, clientPacket.getAddress(), clientPacket.getPort());
 
 			serverSocket.send(infoPacket);
@@ -235,6 +239,68 @@ class CaveShare {
 			System.arraycopy(arrayTwo, 0, newArray, arrayOne.length, arrayTwo.length);
 
 			return newArray;
+
+		}
+
+		boolean waitForClientReadiness(DatagramPacket clientPacket, DatagramSocket serverSocket) throws IOException {
+
+			System.out.println("\nWaiting for the client to initiate the file transfer...");
+			boolean clientReady = false;
+
+			// Wait to receive the text "READY" from the client.
+			// The body the received packet should therefore be 5 bytes.
+			int bufferSize = 5;
+			byte[] buffer = new byte[bufferSize];
+			DatagramPacket readyPacket = new DatagramPacket(buffer, buffer.length);
+
+			serverSocket.receive(readyPacket);
+
+			String packetText = new String(readyPacket.getData(), 0, readyPacket.getLength());
+
+			if (packetText.equals("READY")) {
+				System.out.println("Client has confirmed it is ready for the download with message " + packetText + ".");
+				clientReady = true;
+			} else {
+				System.out.println("Error - malformed packet received. Packet body: " + packetText);
+				clientReady = false;
+			}
+
+			return clientReady;
+
+		}
+
+		void sendFile(File file, DatagramPacket clientPacket, DatagramSocket serverSocket) throws FileNotFoundException, IOException {
+
+			System.out.println("\nPreparing to send file...\n");
+
+			FileInputStream fileStream = new FileInputStream(file);
+			int packetSize = 64;
+			int fileSize = (int) file.length();
+			int packetsNeeded = 0;
+			int packetRemainder = packetSize;
+
+			if (fileSize % packetSize == 0) {
+				packetsNeeded = fileSize / packetSize;
+			} else {
+				packetsNeeded = (fileSize / packetSize) + 1;
+				packetRemainder = fileSize % packetSize;
+			}
+
+			byte[] fileBytes = new byte[fileSize];
+			fileStream.read(fileBytes);
+
+			// This is a temporary delay for manual testing purposes.
+			// CaveShare.wait(15000);
+			System.out.println("Now sending file...");
+
+			for (int i = 0, currentPacketSize = packetSize; i < packetsNeeded; i++) {
+				if (i == packetsNeeded-1){
+					currentPacketSize = packetRemainder;
+				}
+				serverSocket.send(new DatagramPacket(fileBytes, i*packetSize, currentPacketSize, clientPacket.getAddress(), clientPacket.getPort()));
+			}
+
+			System.out.println("\nFile sent!");
 
 		}
 
