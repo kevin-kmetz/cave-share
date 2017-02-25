@@ -6,6 +6,7 @@ import java.net.*;
 import java.util.Scanner;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.security.MessageDigest;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -248,7 +249,7 @@ class CaveShare {
 			boolean clientReady = false;
 
 			// Wait to receive the text "READY" from the client.
-			// The body the received packet should therefore be 5 bytes.
+			// The body of the received packet should therefore be 5 bytes.
 			int bufferSize = 5;
 			byte[] buffer = new byte[bufferSize];
 			DatagramPacket readyPacket = new DatagramPacket(buffer, buffer.length);
@@ -297,6 +298,7 @@ class CaveShare {
 				if (i == packetsNeeded-1){
 					currentPacketSize = packetRemainder;
 				}
+
 				serverSocket.send(new DatagramPacket(fileBytes, i*packetSize, currentPacketSize, clientPacket.getAddress(), clientPacket.getPort()));
 			}
 
@@ -452,29 +454,10 @@ class CaveShare {
 			System.out.println("Server token: " + token);
 			System.out.println("Client port: " + clientPort);
 
-			/*try {
-				DatagramSocket clientSocket = new DatagramSocket(clientPort);
-
-				DatagramPacket clientPacket = listenForClient(serverSocket, token);
-				sendFileInfo(file, clientPacket, serverSocket);
-				boolean clientReady = waitForClientReadiness(clientPacket, serverSocket);
-
-				if (clientReady) {
-					sendFile(file, clientPacket, serverSocket);
-				}
-
-			} catch (SocketException e) {
-				System.out.println("Error occurred while trying to open a port.");
-			} catch (IOException e) {
-				System.out.println("Error occurred while receiving data.");
-			}*/
-
 			try {
 				DatagramSocket clientSocket = new DatagramSocket(clientPort);
 
 				establishConnection(serverSocketAddr, token, clientSocket);
-				//File file = listenForInformation(serverSocketAddr, clientSocket);
-				//receiveFile(serverSocketAddr, clientSocket);
 			} catch (SocketException e) {
 				System.out.println("Error occurred while trying to open client port.");
 			} catch (IOException e) {
@@ -486,7 +469,7 @@ class CaveShare {
 		void establishConnection(InetSocketAddress serverSocketAddr, String token, DatagramSocket clientSocket) throws SocketException, IOException {
 
 			DatagramPacket tokenPacket = new DatagramPacket(token.getBytes(), token.length(), serverSocketAddr.getAddress(), serverSocketAddr.getPort());
-			byte[] buffer = new byte[256];
+			byte[] buffer = new byte[128];
 			DatagramPacket infoPacket = new DatagramPacket(buffer, buffer.length);
 		
 			System.out.println("\nSending token '" + token + "' to server...");
@@ -503,14 +486,83 @@ class CaveShare {
 
 			ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[] {buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]});
 			fileSize = byteBuffer.getLong();
+			int fileSizeInt = (int) fileSize;
+
+			int lastCharIndex = buffer.length - 1;
+
+			for (int i = lastCharIndex; i >= 72; i--) {
+				if ((int) buffer[i] != 0) {
+					lastCharIndex = i;
+					break;
+				}
+			}
 
 			serversFileHash = new String(Arrays.copyOfRange(buffer, 8, 72));
 
-			fileName = new String(Arrays.copyOfRange(buffer, 72, buffer.length));
+			fileName = new String(Arrays.copyOfRange(buffer, 72, lastCharIndex+1));
 
 			System.out.println("\nFile name: " + fileName);
 			System.out.println("File size: " + fileSize + " bytes");
 			System.out.println("Server's file hash: " + serversFileHash);
+
+			System.out.println("Instantiating file...");
+			File file = new File(fileName);
+			System.out.println("Creating file...");
+
+			byte[] nameBytes = fileName.getBytes();
+
+			try {
+				file.createNewFile();
+			} catch(IOException e) {
+				System.out.println("IOEXCEPTION");
+				e.printStackTrace();
+			} catch (SecurityException e) {
+				System.out.println("SECURITY EXCEPTION");
+			}
+			System.out.print("Instantiating FileOutputStream");
+			FileOutputStream fileOutputStream = new FileOutputStream(file);
+
+			byte[] receiveBuffer = new byte[fileSizeInt];
+			int packetSize = 64;
+			int packetsNeeded = 0;
+			int packetRemainder = packetSize;
+
+			if (fileSizeInt % packetSize == 0) {
+				packetsNeeded = fileSizeInt / packetSize;
+			} else {
+				packetsNeeded = (fileSizeInt / packetSize) + 1;
+				packetRemainder = fileSizeInt % packetSize;
+			}
+
+			System.out.println("\nBeginning the file transfer...");
+
+			clientSocket.send(new DatagramPacket("READY".getBytes(), 5, serverSocketAddr.getAddress(), serverSocketAddr.getPort()));
+
+			for (int i = 0, currentPacketSize = packetSize; i < packetsNeeded; i++) {
+				if (i == packetsNeeded-1){
+					currentPacketSize = packetRemainder;
+				}
+				clientSocket.receive(new DatagramPacket(receiveBuffer, packetSize*i, currentPacketSize));
+			}
+
+			System.out.println("File transfer complete!");
+
+			fileOutputStream.write(receiveBuffer);
+			fileOutputStream.close();
+			clientSocket.close();
+
+			String clientsFileHash = getHash(file);
+			System.out.println("\nReceived file's hash: " + clientsFileHash);
+			System.out.println("Server's hash: " + serversFileHash);
+
+			if (!clientsFileHash.equals(serversFileHash)) {
+				System.out.println("File integrity corrupted!");
+			} else if (clientsFileHash.equals(serversFileHash)) {
+				System.out.println("File integrity verified!");
+			}
+
+			System.out.println("Now closing the client...\nThanks for using CaveShare!");
+
 		}
 
 	}
