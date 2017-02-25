@@ -308,9 +308,168 @@ class CaveShare {
 
 	class CaveClient {
 
-		// Add client code here
-
 		CaveClient() {
+			System.out.println("\nInitializing client...\n");
+			delay(waitTime);
+
+			try {
+				InetSocketAddress serverSocketAddr = inputServerDetails();
+				String token = inputServerToken();
+				int clientPort = chooseClientPort();
+
+				try {
+					obtainFile(serverSocketAddr, token, clientPort);
+				} catch (Exception e) {
+					System.out.println("Error - something has gone wrong.");
+				}
+
+			} catch (UnknownHostException e) {
+				System.out.println("Error establishing a valid server hostname/IP address. Terminating...");
+			}
+		}
+
+		InetSocketAddress inputServerDetails() throws UnknownHostException{
+			
+			return new InetSocketAddress(inputServerAddress(), inputServerPort());
+
+		}
+
+		InetAddress inputServerAddress() throws UnknownHostException {
+
+			Scanner input = new Scanner(System.in);
+			boolean inputError;
+			String hostOrIP;
+
+			// This next statement is problematic.
+			// Because an empty InetAddress cannot be declared to prepare for the do...while loop,
+			// and because the return statement doesn't trust that the variable will have a value,
+			// this must done and the function must mention 'throws'.
+			InetAddress address = InetAddress.getByAddress(new byte[] {127, 0, 0, 1});
+
+			do {
+				inputError = false;
+				System.out.println("What is the hostname or IP address of the server?");
+				System.out.print("Server hostname/IP address: ");
+				hostOrIP = new String(input.nextLine());
+
+				try {
+					address = InetAddress.getByName(hostOrIP);
+				} catch (UnknownHostException e) {
+					inputError = true;
+					System.out.println("Error - invalid hostname or IP address.\n");
+				}
+
+			} while (inputError);
+
+			return address;
+
+		}
+
+		int inputServerPort() {
+
+			int port = 55555;
+			Scanner input = new Scanner(System.in);
+			boolean inputError;
+
+			do {
+				inputError = false;
+				System.out.println("\nWhich port does the server use to send and receive data?");
+				delay(waitTime);
+				System.out.print("Server port number: ");
+				try {
+					port = input.nextInt();
+
+					if (port <= 0) {
+						inputError = true;
+						System.out.println("Error - invalid port number. Please enter another port number.");
+						delay(waitTime);
+					}
+
+				} catch (InputMismatchException e) {
+					inputError = true;
+					System.out.println("Error. Please enter another port number.\n");
+					delay(waitTime);
+
+					// The following line is needed to disregard a lingering '\n'.
+					input.nextLine();
+				}
+			} while (inputError);
+
+			return port;
+		}
+
+		String inputServerToken() {
+
+			Scanner input = new Scanner(System.in);
+
+			System.out.println("\nEnter the token that the server will require to initiate the file transfer.");
+			delay(waitTime);
+			System.out.print("Enter a word or phrase: ");
+
+			return input.nextLine();
+
+		}
+
+		int chooseClientPort() {
+
+			int port = 55555;
+			Scanner input = new Scanner(System.in);
+			boolean inputError;
+
+			do {
+				inputError = false;
+				System.out.println("\nUse which port to communicate with the server?");
+				delay(waitTime);
+				System.out.print("Client port number: ");
+				try {
+					port = input.nextInt();
+
+					if (port <= 0) {
+						inputError = true;
+						System.out.println("Error - invalid port number. Please enter another port number.");
+						delay(waitTime);
+					}
+
+				} catch (InputMismatchException e) {
+					inputError = true;
+					System.out.println("Error. Please enter another port number.\n");
+					delay(waitTime);
+
+					// The following line is needed to disregard a lingering '\n'.
+					input.nextLine();
+				}
+			} while (inputError);
+
+			return port;
+		}
+
+		void obtainFile(InetSocketAddress serverSocketAddr, String token, int clientPort) throws UnknownHostException {
+
+			System.out.println("\nPreparing to establish connection with server...");
+
+			System.out.println("\nServer address: " + serverSocketAddr.getHostString());
+			System.out.println("Server port: " + serverSocketAddr.getPort());
+			System.out.println("Server token: " + token);
+			System.out.println("Client port: " + clientPort);
+
+			/*try {
+				DatagramSocket clientSocket = new DatagramSocket(clientPort);
+
+				DatagramPacket clientPacket = listenForClient(serverSocket, token);
+				sendFileInfo(file, clientPacket, serverSocket);
+				boolean clientReady = waitForClientReadiness(clientPacket, serverSocket);
+
+				if (clientReady) {
+					sendFile(file, clientPacket, serverSocket);
+				}
+
+			} catch (SocketException e) {
+				System.out.println("Error occurred while trying to open a port.");
+			} catch (IOException e) {
+				System.out.println("Error occurred while receiving data.");
+			}*/
+
+
 		}
 
 	}
