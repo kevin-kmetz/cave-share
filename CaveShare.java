@@ -469,7 +469,48 @@ class CaveShare {
 				System.out.println("Error occurred while receiving data.");
 			}*/
 
+			try {
+				DatagramSocket clientSocket = new DatagramSocket(clientPort);
 
+				establishConnection(serverSocketAddr, token, clientSocket);
+				//File file = listenForInformation(serverSocketAddr, clientSocket);
+				//receiveFile(serverSocketAddr, clientSocket);
+			} catch (SocketException e) {
+				System.out.println("Error occurred while trying to open client port.");
+			} catch (IOException e) {
+				System.out.println("Error occurred while trying to communicate with the server.");
+			}
+
+		}
+
+		void establishConnection(InetSocketAddress serverSocketAddr, String token, DatagramSocket clientSocket) throws SocketException, IOException {
+
+			DatagramPacket tokenPacket = new DatagramPacket(token.getBytes(), token.length(), serverSocketAddr.getAddress(), serverSocketAddr.getPort());
+			byte[] buffer = new byte[256];
+			DatagramPacket infoPacket = new DatagramPacket(buffer, buffer.length);
+		
+			System.out.println("\nSending token '" + token + "' to server...");
+			clientSocket.send(tokenPacket);
+
+			System.out.println("Token sent. Waiting for reply from server...");
+			clientSocket.receive(infoPacket);
+
+			System.out.println("\nFile info received!");
+
+			long fileSize;
+			String serversFileHash;
+			String fileName;
+
+			ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[] {buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]});
+			fileSize = byteBuffer.getLong();
+
+			serversFileHash = new String(Arrays.copyOfRange(buffer, 8, 72));
+
+			fileName = new String(Arrays.copyOfRange(buffer, 72, buffer.length));
+
+			System.out.println("\nFile name: " + fileName);
+			System.out.println("File size: " + fileSize + " bytes");
+			System.out.println("Server's file hash: " + serversFileHash);
 		}
 
 	}
