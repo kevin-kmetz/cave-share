@@ -24,7 +24,7 @@ class CaveShare {
 
 		CaveServer() {
 			System.out.println("\nInitializing server...\n");
-			CaveShare.wait(waitTime);
+			delay(waitTime);
 
 			int serverPort = chooseServerPort();
 			String token = chooseToken();
@@ -47,7 +47,7 @@ class CaveShare {
 			do {
 				inputError = false;
 				System.out.println("Which port should be used to send files?");
-				CaveShare.wait(waitTime);
+				delay(waitTime);
 				System.out.print("Port number: ");
 				try {
 					port = input.nextInt();
@@ -55,13 +55,13 @@ class CaveShare {
 					if (port <= 0) {
 						inputError = true;
 						System.out.println("Error - invalid port number. Please enter another port number.\n");
-						CaveShare.wait(waitTime);
+						delay(waitTime);
 					}
 
 				} catch (InputMismatchException e) {
 					inputError = true;
 					System.out.println("Error. Please enter another port number.\n");
-					CaveShare.wait(waitTime);
+					delay(waitTime);
 
 					// The following line is needed to disregard a lingering '\n'.
 					input.nextLine();
@@ -76,7 +76,7 @@ class CaveShare {
 			Scanner input = new Scanner(System.in);
 
 			System.out.println("\nPlease enter a token that others can use to initiate file transfers.");
-			CaveShare.wait(waitTime);
+			delay(waitTime);
 			System.out.print("Enter a word or phrase: ");
 
 			return input.nextLine();
@@ -91,7 +91,7 @@ class CaveShare {
 
 			do {
 				System.out.println("\nPlease enter the path and filename of the file that will be offered.");
-				CaveShare.wait(waitTime);
+				delay(waitTime);
 				System.out.print("Enter the path and filename: ");
 
 				pathAndName = input.nextLine();
@@ -185,7 +185,7 @@ class CaveShare {
 
 			System.out.println("\nMoving on to the next step...\n");
 			// This is a delay for manual testing purposes.
-			//CaveShare.wait(15000);
+			//delay(15000);
 			return packet;
 		}
 
@@ -290,7 +290,7 @@ class CaveShare {
 			fileStream.read(fileBytes);
 
 			// This is a temporary delay for manual testing purposes.
-			// CaveShare.wait(15000);
+			// delay(15000);
 			System.out.println("Now sending file...");
 
 			for (int i = 0, currentPacketSize = packetSize; i < packetsNeeded; i++) {
@@ -306,9 +306,12 @@ class CaveShare {
 
 	}
 
-	static void CaveClient(){
+	class CaveClient {
 
-		// Add client code here later.
+		// Add client code here
+
+		CaveClient() {
+		}
 
 	}
 
@@ -321,7 +324,7 @@ class CaveShare {
 		} else {
 
 			System.out.println("\nCave Share\nBy Kevin Kmetz");
-			wait(waitTime);
+			delay(waitTime);
 
 			String userInput;
 			Scanner scanner = new Scanner(System.in);
@@ -329,7 +332,7 @@ class CaveShare {
 
 			do {
 				System.out.println("\nWould you like to offer a file or obtain a file?");
-				wait(waitTime);
+				delay(waitTime);
 				System.out.print("(Type 'obtain' or 'offer'): ");
 
 				userInput = scanner.nextLine();
@@ -337,7 +340,8 @@ class CaveShare {
 				switch (userInput) {
 					case("obtain"):
 						inputError = false;
-						System.out.println("Client!");
+						//System.out.println("Client!");
+						CaveClient client = new CaveShare().new CaveClient();
 						break;
 					case("offer"):
 						inputError = false;
@@ -347,7 +351,7 @@ class CaveShare {
 					default:
 						inputError = true;
 						System.out.println("Error. Please try again.");
-						wait(waitTime);
+						delay(waitTime);
 				}
 			} while(inputError);
 
@@ -355,7 +359,9 @@ class CaveShare {
 
 	}
 
-	static void wait(int time) {
+	static void delay(int time) {
+	// 'delay' was chosen as the method name to avoid confusion and conflicts
+	// with other common methods like 'sleep()' and 'wait()'.
 
 		try {
 			Thread.sleep(time);
