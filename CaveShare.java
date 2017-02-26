@@ -310,6 +310,8 @@ class CaveShare {
 
 	class CaveClient {
 
+		static final int packetSize = 64;
+
 		CaveClient() {
 			System.out.println("\nInitializing client...\n");
 			delay(waitTime);
@@ -468,48 +470,109 @@ class CaveShare {
 
 		void establishConnection(InetSocketAddress serverSocketAddr, String token, DatagramSocket clientSocket) throws SocketException, IOException {
 
+			sendToken(serverSocketAddr, token, clientSocket);
+
+			byte[] fileInfoArray = receiveFileInfoPacket(clientSocket);
+
+			int fileSize = extractFileSize(fileInfoArray);
+			String serversHash = extractServerHash(fileInfoArray);
+			String fileName = extractFileName(fileInfoArray);
+
+			displayServerFileInfo(fileName, fileSize, serversHash);
+
+			File file = createFile(fileName);
+
+			receiveFile(file, fileSize, serverSocketAddr, clientSocket);
+
+			checkFileIntegrity(file, serversHash);
+
+			System.out.println("Now closing the client...\nThanks for using CaveShare!");
+
+		}
+
+		void sendToken(InetSocketAddress serverSocketAddr, String token, DatagramSocket clientSocket) throws IOException {
+
 			DatagramPacket tokenPacket = new DatagramPacket(token.getBytes(), token.length(), serverSocketAddr.getAddress(), serverSocketAddr.getPort());
-			byte[] buffer = new byte[128];
-			DatagramPacket infoPacket = new DatagramPacket(buffer, buffer.length);
-		
+
 			System.out.println("\nSending token '" + token + "' to server...");
 			clientSocket.send(tokenPacket);
+			System.out.println("Token sent.");
 
-			System.out.println("Token sent. Waiting for reply from server...");
+		}
+
+		byte[] receiveFileInfoPacket(DatagramSocket clientSocket) throws IOException {
+
+			byte[] buffer = new byte[128];
+			DatagramPacket infoPacket = new DatagramPacket(buffer, buffer.length);
+
+			System.out.println("Waiting for reply from server...");
 			clientSocket.receive(infoPacket);
 
 			System.out.println("\nFile info received!");
 
-			long fileSize;
-			String serversFileHash;
-			String fileName;
+			return buffer;
 
-			ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[] {buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]});
-			fileSize = byteBuffer.getLong();
+		}
+
+		int extractFileSize(byte[] fileInfo) {
+
+			ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[] {fileInfo[0], fileInfo[1], fileInfo[2], fileInfo[3], fileInfo[4], fileInfo[5], fileInfo[6], fileInfo[7]});
+
+			// Eventually, a maximum file size of 2 GB should be checked for and
+			// error handling should be implemented here.
+			long fileSize = byteBuffer.getLong();
 			int fileSizeInt = (int) fileSize;
 
-			int lastCharIndex = buffer.length - 1;
+			return fileSizeInt;
+
+		}
+
+		String extractServerHash(byte[] fileInfo) {
+
+			String serversFileHash = new String(Arrays.copyOfRange(fileInfo, 8, 72));
+
+			return serversFileHash;
+
+		}
+
+		String extractFileName(byte[] fileInfo) {
+
+			int endOfFileNameIndex = locateFileNameEnd(fileInfo);
+
+			String fileName = new String(Arrays.copyOfRange(fileInfo, 72, endOfFileNameIndex+1));
+
+			return fileName;
+
+		}
+
+		int locateFileNameEnd(byte[] fileInfo) {
+
+			int lastCharIndex = fileInfo.length - 1;
 
 			for (int i = lastCharIndex; i >= 72; i--) {
-				if ((int) buffer[i] != 0) {
+				if ((int) fileInfo[i] != 0) {
 					lastCharIndex = i;
 					break;
 				}
 			}
 
-			serversFileHash = new String(Arrays.copyOfRange(buffer, 8, 72));
+			return lastCharIndex;
 
-			fileName = new String(Arrays.copyOfRange(buffer, 72, lastCharIndex+1));
+		}
+
+		void displayServerFileInfo(String fileName, int fileSize, String serversHash) {
 
 			System.out.println("\nFile name: " + fileName);
 			System.out.println("File size: " + fileSize + " bytes");
-			System.out.println("Server's file hash: " + serversFileHash);
+			System.out.println("Server's file hash: " + serversHash);
+
+		}
+
+		File createFile(String fileName) {
 
 			System.out.println("Instantiating file...");
 			File file = new File(fileName);
 			System.out.println("Creating file...");
-
-			byte[] nameBytes = fileName.getBytes();
 
 			try {
 				file.createNewFile();
@@ -519,20 +582,20 @@ class CaveShare {
 			} catch (SecurityException e) {
 				System.out.println("SECURITY EXCEPTION");
 			}
-			System.out.print("Instantiating FileOutputStream");
+
+			return file;
+
+		}
+
+		void receiveFile(File file, int fileSize, InetSocketAddress serverSocketAddr, DatagramSocket clientSocket) throws FileNotFoundException, IOException {
+
 			FileOutputStream fileOutputStream = new FileOutputStream(file);
+			byte[] receiveBuffer = new byte[fileSize];
+			int packetsNeeded = calculatePacketsNeeded(fileSize);
 
-			byte[] receiveBuffer = new byte[fileSizeInt];
-			int packetSize = 64;
-			int packetsNeeded = 0;
-			int packetRemainder = packetSize;
-
-			if (fileSizeInt % packetSize == 0) {
-				packetsNeeded = fileSizeInt / packetSize;
-			} else {
-				packetsNeeded = (fileSizeInt / packetSize) + 1;
-				packetRemainder = fileSizeInt % packetSize;
-			}
+			// This following line is needed because the final packet sent by the server
+			// isn't padded with empty data to match the size of the other packets.
+			int finalPacketSize = calculateFinalPacketSize(fileSize);
 
 			System.out.println("\nBeginning the file transfer...");
 
@@ -540,7 +603,7 @@ class CaveShare {
 
 			for (int i = 0, currentPacketSize = packetSize; i < packetsNeeded; i++) {
 				if (i == packetsNeeded-1){
-					currentPacketSize = packetRemainder;
+					currentPacketSize = finalPacketSize;
 				}
 				clientSocket.receive(new DatagramPacket(receiveBuffer, packetSize*i, currentPacketSize));
 			}
@@ -551,17 +614,49 @@ class CaveShare {
 			fileOutputStream.close();
 			clientSocket.close();
 
-			String clientsFileHash = getHash(file);
-			System.out.println("\nReceived file's hash: " + clientsFileHash);
-			System.out.println("Server's hash: " + serversFileHash);
+		}
 
-			if (!clientsFileHash.equals(serversFileHash)) {
-				System.out.println("File integrity corrupted!");
-			} else if (clientsFileHash.equals(serversFileHash)) {
-				System.out.println("File integrity verified!");
+		int calculatePacketsNeeded(int fileSize) {
+
+			int packetsNeeded;
+			int packetRemainder = packetSize;
+
+			if (fileSize % packetSize == 0) {
+				packetsNeeded = fileSize / packetSize;
+			} else {
+				packetsNeeded = (fileSize / packetSize) + 1;
+				packetRemainder = fileSize % packetSize;
 			}
 
-			System.out.println("Now closing the client...\nThanks for using CaveShare!");
+			return packetsNeeded;
+
+		}
+
+		int calculateFinalPacketSize(int fileSize) {
+
+			int packetRemainder;
+
+			if (fileSize % packetSize == 0) {
+				packetRemainder = packetSize;
+			} else {
+				packetRemainder = fileSize % packetSize;
+			}
+
+			return packetRemainder;
+
+		}
+
+		void checkFileIntegrity(File file, String serversHash) {
+
+			String clientsHash = getHash(file);
+			System.out.println("\nReceived file's hash: " + clientsHash);
+			System.out.println("Server's hash: " + serversHash);
+
+			if (!clientsHash.equals(serversHash)) {
+				System.out.println("File integrity corrupted!");
+			} else if (clientsHash.equals(serversHash)) {
+				System.out.println("File integrity verified!");
+			}
 
 		}
 
